@@ -12,8 +12,8 @@ DOMAINS: dict[str, object] = {
     f"{m.icon} {m.title}": m for m in (NJTECH, HOT, HIGHLY)
 }
 
-setup_page("学科建设观测")
-st.markdown("## 🏆 学科建设观测")
+setup_page("学科建设智能评估")
+st.markdown("## 🏆 学科建设智能评估 Subject Judgment Intelligence Evaluation")
 
 # ================= 1. 一级导航：观测域 =================
 with st.sidebar:
