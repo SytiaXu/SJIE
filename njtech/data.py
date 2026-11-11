@@ -18,6 +18,7 @@ from dataclasses import dataclass, field
 from typing import Dict, List, Set
 
 import pandas as pd
+import requests
 import streamlit as st
 
 REQUIRED_COLS = ("题名", "单位", "作者", "学科", "刊名", "发表年", "被引频次")
@@ -166,7 +167,7 @@ def _build_paper_info(snapshots: Dict[str, pd.DataFrame], snaps: List[str]) -> p
                     .set_index("title_key")[DISPLAY_COLS])
     info = info.join(latest)
 
-    info["首次入榜快照"] = info["首次在榜"] if False else [snaps[i] for i in info["首次入榜"]]
+    info["首次入榜快照"] = [snaps[i] for i in info["首次入榜"]]
     info["最近在榜快照"] = [snaps[i] for i in info["最近在榜"]]
     info["学院列表"] = info["学院"].map(split_multi)
     info["作者列表"] = info["作者"].map(split_multi)
@@ -220,10 +221,27 @@ class NJTechData:
 
 # ---------- 入口 ----------
 
-def _resolve_source(path: str, label: str, domain_id: str):
-    """本地文件优先,否则侧边栏上传兜底。返回 (source, tag) 或 None。"""
+@st.cache_data(show_spinner="正在从 GitHub 下载数据…")
+def _download_release(url: str) -> bytes:
+    """从 GitHub Release 直链下载文件,以 url 为缓存键。失败抛异常,不缓存。"""
+    r = requests.get(url, timeout=30)
+    r.raise_for_status()
+    return r.content
+
+
+def _resolve_source(path: str, label: str, domain_id: str, release_url: str = None):
+    """本地文件 → Release 直链自动下载 → 侧边栏上传兜底。返回 (source, tag) 或 None。"""
+    # 1) 本地文件优先(开发时直接放 data/ 目录)
     if os.path.exists(path):
         return path, os.path.getmtime(path)
+    # 2) GitHub Release 直链自动下载
+    if release_url:
+        try:
+            blob = _download_release(release_url)
+            return blob, release_url
+        except Exception as e:
+            st.warning(f"「{label}」自动下载失败({e}),请在左侧手动上传数据文件。")
+    # 3) 侧边栏手动上传
     up = st.sidebar.file_uploader(f"上传「{label}」Excel 数据文件", type=["xlsx"],
                                   key=f"upload_{domain_id}_{label}")
     if up is None:
@@ -231,11 +249,13 @@ def _resolve_source(path: str, label: str, domain_id: str):
     return up.getvalue(), len(up.getvalue())
 
 
-def load_njtech_data(highly_path: str, hot_path: str, domain_id: str) -> NJTechData:
-    src_h = _resolve_source(highly_path, "高被引论文", domain_id)
-    src_t = _resolve_source(hot_path, "热点论文", domain_id)
+def load_njtech_data(highly_path: str, hot_path: str, domain_id: str,
+                     highly_url: str = None, hot_url: str = None) -> NJTechData:
+    src_h = _resolve_source(highly_path, "高被引论文", domain_id, highly_url)
+    src_t = _resolve_source(hot_path, "热点论文", domain_id, hot_url)
     if src_h is None or src_t is None:
-        st.info(f"未找到 `{highly_path}` / `{hot_path}`,请在左侧上传对应 Excel"
+        st.info(f"未找到 `{highly_path}` / `{hot_path}`,且自动下载未成功,"
+                "请在左侧上传对应 Excel"
                 "(每张工作表一个时间快照,含题名/单位/作者/学科/刊名/发表年/被引频次七列)。")
         st.stop()
 

@@ -19,10 +19,10 @@ def make_fronts_module(mid: str, icon: str, title: str, path: str, release_url: 
     )
 
 # GitHub Release 资产地址
-FRONT_URL = "https://github.com/SytiaXu/SJIE/releases/download/v1.0.0/front.xlsx"
+FRONT_URL = "https://github.com/SytiaXu/SJIE/releases/download/v2026.11.11/front.xlsx"
 
 FRONTS = make_fronts_module(
     mid="fronts", icon="🧭", title="前沿方向透视",
-    path="ex/front.xlsx",
+    path="data/front.xlsx",
     release_url=FRONT_URL,
 )

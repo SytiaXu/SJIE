@@ -26,17 +26,19 @@ def make_papers_module(mid: str, icon: str, title: str,
     )
 
 # GitHub Release 资产地址
-HIGHLY_URL = "https://github.com/SytiaXu/SJIE/releases/download/v1.0.1/highly.xlsx"
+HOT_URL = "https://github.com/SytiaXu/SJIE/releases/download/v2026.11.11/hot.xlsx"
+HIGHLY_URL = "https://github.com/SytiaXu/SJIE/releases/download/v2026.11.11/highly.xlsx"
 
 HOT = make_papers_module(
     mid="hot", icon="🔥", title="全球热点论文",
     excel_path="data/hot.xlsx",
     upload_label="上传「热点论文」Excel 数据文件",
+    release_url=HOT_URL,
 )
 
 HIGHLY = make_papers_module(
     mid="highly", icon="📌", title="全球高被引论文",
-    excel_path="ex/highly.xlsx",
+    excel_path="data/highly.xlsx",
     upload_label="上传「高被引论文」Excel 数据文件",
     release_url=HIGHLY_URL,
 )

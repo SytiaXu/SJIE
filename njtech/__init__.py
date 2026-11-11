@@ -6,10 +6,12 @@ from . import pages
 
 
 def make_njtech_module(mid: str, icon: str, title: str,
-                       highly_path: str, hot_path: str) -> ObsModule:
+                       highly_path: str, hot_path: str,
+                       highly_url: str | None = None,
+                       hot_url: str | None = None) -> ObsModule:
     return ObsModule(
         id=mid, icon=icon, title=title,
-        load=lambda: load_njtech_data(highly_path, hot_path, mid),
+        load=lambda: load_njtech_data(highly_path, hot_path, mid, highly_url=highly_url, hot_url=hot_url),
         pages={
             "📊 数据总览":      pages.render_overview,
             "🧪 学科主页":      pages.render_disc,
@@ -23,9 +25,13 @@ def make_njtech_module(mid: str, icon: str, title: str,
         },
     )
 
+NJTHIGHLY_URL = "https://github.com/SytiaXu/SJIE/releases/download/v2026.11.11/njtech_highly.xlsx"
+NJTHOT_URL = "https://github.com/SytiaXu/SJIE/releases/download/v2026.11.11/njtech_hot.xlsx"
 
 NJTECH = make_njtech_module(
     mid="njtech", icon="🏫", title="NJTECH论文透视",
     highly_path="data/njtech_highly.xlsx",
     hot_path="data/njtech_hot.xlsx",
+    highly_url=NJTHIGHLY_URL,
+    hot_url=NJTHOT_URL,
 )
