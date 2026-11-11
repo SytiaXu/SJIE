@@ -41,6 +41,13 @@ def _strip_note(name: str) -> str:
     """去掉作者名尾部括注:'张三(通讯)' -> '张三'。中英文括号都处理。"""
     return _NOTE_RE.sub("", str(name)).strip()
 
+_COMMA_RE = re.compile(r"\s*[,，]\s*")
+
+def _norm_name(name: str) -> str:
+    """规范作者名:逗号(含全角)两侧无论多少空格,统一为半角逗号+一个半角空格。
+    'Smith ,  San' / 'Smith,San' / 'Smith , San' -> 'Smith, San'"""
+    return _COMMA_RE.sub(", ", str(name)).strip()
+
 def _data(ctx: PageCtx) -> NJTechData:
     d = st.session_state.get(f"njtech_data_{ctx.module.id}")
     if d is None:                      # 防御:正常流程 load() 先于页面执行
@@ -118,7 +125,8 @@ def _explode(df: pd.DataFrame) -> pd.DataFrame:
         return df.iloc[0:0]          # 保留列结构的空表
     rows = []
     for _, r in df.iterrows():
-        authors = [_strip_note(a) for a in re.split(r"[;；]", str(r["作者"]))]
+        authors = [_norm_name(_strip_note(a))
+                   for a in re.split(r"[;；]", str(r["作者"]))]
         authors = [a for a in authors if a and a.lower() not in _MISSING]
         colleges = [c for c in (c.strip() for c in re.split(r"[;；]", str(r["学院"])))
                     if c and c.lower() not in _MISSING]
@@ -1102,3 +1110,47 @@ def render_papers(ctx: PageCtx):
     st.download_button("导出当前筛选结果",
                        df.to_csv(index=False).encode("utf-8-sig"),
                        f"papers_{snap}.csv", "text/csv", key=ctx.k("pp", "csv"))
+
+    # ---- 南工学者名单 + 代表论文 ----
+    ex = _explode(info)
+    if ex.empty:
+        st.info("没有可用的作者数据。")
+    else:
+        snap_rank = {s: i for i, s in enumerate(snaps)}   # 快照名 -> 时间序号
+        ex = ex.dropna(subset=["首次入榜快照"])
+        ex["_rank"] = ex["首次入榜快照"].map(snap_rank).fillna(len(snaps))
+
+        # 每位作者最早出现的快照(序号),只保留该期入榜的论文
+        first_rank = ex.groupby("作者")["_rank"].transform("min")
+        ex_first = ex[ex["_rank"] == first_rank].copy()
+
+        # 当期被引:从 timeline 取该篇在首现快照时的被引数,取不到退回最新被引
+        def _cited_at(r):
+            try:
+                v = timeline.at[r["title_key"], r["首次入榜快照"]]
+                return v if pd.notna(v) else r["被引"]
+            except KeyError:
+                return r["被引"]
+        ex_first["首现期被引"] = ex_first.apply(_cited_at, axis=1)
+
+        au_tbl = (ex_first
+                  .sort_values(["作者", "首现期被引"],
+                               ascending=[True, False], na_position="last")
+                  .drop_duplicates(subset=["作者"], keep="first")
+                  [["作者", "题名", "学科", "刊名", "年份",
+                    "首现期被引", "在榜期数", "首次入榜快照", "_rank"]]
+                  .sort_values(["_rank", "作者"])
+                  .drop(columns="_rank")
+                  .reset_index(drop=True))
+
+        st.subheader(f"👤 南工学者全览(共 {len(au_tbl):,} 人)")
+        st.caption("每位作者取其最早入榜快照时的记录;同期多篇取当期被引最高的一篇。")
+        st.dataframe(au_tbl, width="stretch", hide_index=True, height=420,
+                     column_config={
+                         "题名": st.column_config.TextColumn("题名", width="large"),
+                         "作者": st.column_config.TextColumn("作者", width="medium")})
+        st.download_button(f"导出全期作者名单(共 {len(au_tbl):,} 人)",
+                           au_tbl.to_csv(index=False).encode("utf-8-sig"),
+                           "authors_alltime.csv", "text/csv",
+                           key=ctx.k("pp", "au_csv"))
+

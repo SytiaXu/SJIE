@@ -6,10 +6,11 @@ from common.ui import setup_page
 from common.registry import PageCtx
 from hpaper import HOT, HIGHLY
 from njtech import NJTECH
+from fronts import FRONTS
 
 # 域注册表：侧边栏一级导航顺序即此字典顺序。
 DOMAINS: dict[str, object] = {
-    f"{m.icon} {m.title}": m for m in (NJTECH, HOT, HIGHLY)
+    f"{m.icon} {m.title}": m for m in (NJTECH, HOT, HIGHLY, FRONTS)
 }
 
 setup_page("学科建设智能评估")
