@@ -21,6 +21,7 @@ from typing import Dict, List
 
 import pandas as pd
 import streamlit as st
+from common.download import download_from_release
 
 # ---------- 配置 ----------
 REQUIRED_COLS = ("Fronts", "Papers", "Citations", "xk", "myear")
@@ -84,7 +85,7 @@ def _normalize_sheet(raw: pd.DataFrame) -> pd.DataFrame:
     return df
 
 
-@st.cache_data(show_spinner="正在读取并规范化快照…")
+@st.cache_data(show_spinner="正在读取快照…")
 def _load_snapshots(source, _tag: str = ""):
     """读 Excel(每 sheet 一期)→ 按名称排序的 {快照名: df}。"""
     if isinstance(source, (bytes, bytearray)):
@@ -280,9 +281,11 @@ class FrontsData:
 
 
 # ---------- 入口 ----------
-def _resolve_source(path: str):
-    """本地文件优先,否则侧边栏上传兜底。返回 (source, tag) 或 None。"""
+def _resolve_source(path: str, release_url: str | None = None):
+    """本地文件优先 → Release 下载 → 侧边栏上传兜底。返回 (source, tag) 或 None。"""
     if os.path.exists(path):
+        return path, os.path.getmtime(path)
+    if release_url and download_from_release(release_url, path):
         return path, os.path.getmtime(path)
     up = st.sidebar.file_uploader("上传「前沿方向」Excel 数据文件", type=["xlsx"],
                                   key="upload_fronts")
@@ -291,7 +294,7 @@ def _resolve_source(path: str):
     return up.getvalue(), len(up.getvalue())
 
 
-@st.cache_data(show_spinner="正在做跨期软对齐(可能需要几十秒)…")
+@st.cache_data(show_spinner="正在读取 Excel 并进行软对齐…（可能需要数分钟）")
 def _load_all(source, _tag: str):
     snapshots = _load_snapshots(source)
     snaps = list(snapshots.keys())
@@ -301,10 +304,11 @@ def _load_all(source, _tag: str):
                       traj=traj, traj_tl=tl, meta=meta)
 
 
-def load_fronts_data(path: str, module_id: str) -> FrontsData:
-    src = _resolve_source(path)
+def load_fronts_data(path: str, module_id: str,
+                     release_url: str | None = None) -> FrontsData:
+    src = _resolve_source(path, release_url)
     if src is None:
-        st.info(f"未找到 `{path}`,请在左侧上传 Excel"
+        st.info(f"未找到 `{path}`,请稍候自动下载完成,或在左侧上传 Excel"
                 "(每张工作表一期快照,含 Fronts/Papers/Citations/xk/myear 五列)。")
         st.stop()
     result = _load_all(src[0], _tag=src[1])

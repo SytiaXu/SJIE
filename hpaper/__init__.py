@@ -10,10 +10,11 @@ from . import pages
 
 
 def make_papers_module(mid: str, icon: str, title: str,
-                       excel_path: str, upload_label: str) -> ObsModule:
+                       excel_path: str, upload_label: str,
+                       release_url: str | None = None) -> ObsModule:
     return ObsModule(
         id=mid, icon=icon, title=title,
-        load=lambda: load_paper_snapshots(excel_path, upload_label, mid),
+        load=lambda: load_paper_snapshots(excel_path, upload_label, mid, release_url=release_url),
         pages={
             "📊 数据总览": pages.render_overview,
             "🏫 高校主页": pages.render_school,
@@ -24,6 +25,8 @@ def make_papers_module(mid: str, icon: str, title: str,
         },
     )
 
+# GitHub Release 资产地址
+HIGHLY_URL = "https://github.com/SytiaXu/SJIE/releases/download/v1.0.1/highly.xlsx"
 
 HOT = make_papers_module(
     mid="hot", icon="🔥", title="全球热点论文",
@@ -33,6 +36,7 @@ HOT = make_papers_module(
 
 HIGHLY = make_papers_module(
     mid="highly", icon="📌", title="全球高被引论文",
-    excel_path="data/highly.xlsx",
+    excel_path="ex/highly.xlsx",
     upload_label="上传「高被引论文」Excel 数据文件",
+    release_url=HIGHLY_URL,
 )

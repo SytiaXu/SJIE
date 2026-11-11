@@ -5,10 +5,10 @@ from .data import load_fronts_data
 from . import pages
 
 
-def make_fronts_module(mid: str, icon: str, title: str, path: str) -> ObsModule:
+def make_fronts_module(mid: str, icon: str, title: str, path: str, release_url: str | None = None) -> ObsModule:
     return ObsModule(
         id=mid, icon=icon, title=title,
-        load=lambda: load_fronts_data(path, mid),
+        load=lambda: load_fronts_data(path, mid, release_url=release_url),
         pages={
             "📊 数据总览":    pages.render_overview,
             "🔀 变迁全景":    pages.render_transition,
@@ -18,8 +18,11 @@ def make_fronts_module(mid: str, icon: str, title: str, path: str) -> ObsModule:
         },
     )
 
+# GitHub Release 资产地址
+FRONT_URL = "https://github.com/SytiaXu/SJIE/releases/download/v1.0.0/front.xlsx"
 
 FRONTS = make_fronts_module(
     mid="fronts", icon="🧭", title="前沿方向透视",
-    path="data/front.xlsx",
+    path="ex/front.xlsx",
+    release_url=FRONT_URL,
 )

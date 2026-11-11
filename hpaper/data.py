@@ -3,9 +3,12 @@
 import io
 import os
 import re
+import requests
 
 import pandas as pd
 import streamlit as st
+
+from common.download import download_from_release
 
 TOP_UNI_N = 100   # 高校下拉/列表默认只展示发文量前 100 的高校
 
@@ -52,7 +55,7 @@ def _normalize_sheet(raw: pd.DataFrame) -> pd.DataFrame:
     return df
 
 
-@st.cache_data(show_spinner="正在读取 Excel…")
+@st.cache_data(show_spinner="正在读取 Excel…（可能需要数分钟）")
 def _load_snapshots(source, _tag=""):
     if isinstance(source, (bytes, bytearray)):
         source = io.BytesIO(source)
@@ -73,13 +76,17 @@ def _load_snapshots(source, _tag=""):
     return data, pd.DataFrame(meta).set_index("快照")
 
 
-def load_paper_snapshots(excel_path: str, upload_label: str, domain_id: str):
-    """本地 data/ 文件优先；没有则侧边栏上传兜底（上传控件按域隔离）。"""
+def load_paper_snapshots(excel_path: str, upload_label: str, domain_id: str,
+                         release_url: str | None = None):
+    """本地文件优先;没有则从 GitHub Release 下载;再不行侧边栏上传兜底。"""
     if os.path.exists(excel_path):
         return _load_snapshots(excel_path, _tag=os.path.getmtime(excel_path))
+
+    if release_url and download_from_release(release_url, excel_path):
+        return _load_snapshots(excel_path, _tag=os.path.getmtime(excel_path))
+
     up = st.sidebar.file_uploader(upload_label, type=["xlsx"], key=f"upload_{domain_id}")
     if up is None:
-        st.info(f"未找到 `{excel_path}`，请在左侧上传 Excel"
-                "（每张工作表一个时间快照，含 id / title / published / xk / 学校 / 省市 六列）。")
-        st.stop()   # 数据不存在，整域无意义，入口层允许 stop
+        st.info(f"未找到 `{excel_path}`,请稍候自动下载完成,或在左侧手动上传 Excel。")
+        st.stop()
     return _load_snapshots(up.getvalue())
